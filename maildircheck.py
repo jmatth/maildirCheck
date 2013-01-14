@@ -76,16 +76,25 @@ def checkMailSize(dirpath, quiet=False, fix=False):
                 reported_size = re.search('[0-9]+',
                         re.search('S=[0-9]+', mail).group()
                         ).group()
-                actual_size = os.stat(subdir + mail).st_size
+                actual_size = str(os.stat(subdir + mail).st_size)
 
-                if not int(reported_size) == actual_size:
+                if not reported_size == actual_size:
                     if not quiet:
                         print ('mv ' + subdir + mail + ' ' + subdir +
                             mail.replace("S=" + reported_size, "S=" +
-                                str(actual_size)))
+                                actual_size))
                     if fix:
+                        uidLineOld = mail.rsplit(':', 1)[0]
+                        uidLineNew = uidLineOld.replace("S=" + reported_size,
+                                "S=" + actual_size)
+
                         shutil.move(subdir + mail, subdir +
                             mail.replace("S=" + reported_size, "S=" +
-                                str(actual_size)))
+                                actual_size))
+
+                        for line in fileinput.input(dirpath +
+                                'dovecot-uidlist', inplace=1):
+                            sys.stdout.write(line.replace(uidLineOld,
+                                uidLineNew))
 
 main()
