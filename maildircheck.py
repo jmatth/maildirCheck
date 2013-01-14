@@ -5,6 +5,7 @@ import glob
 import re
 import shutil
 import glob
+import fileinput
 from optparse import OptionParser
 
 def main():
@@ -14,14 +15,7 @@ def main():
         checkMaildirFolders(maildir, options.quiet, options.fix)
 
     else:
-        maildir_contents = os.listdir(maildir)
-        if not ('cur' in maildir_contents and 'new' in maildir_contents and
-                'tmp' in maildir_contents):
-            print >> sys.stderr, ('Missing cur, new, and/or tmp. Are you' +
-                    'this is a maildir?')
-            sys.exit(1)
-        for subdir in ['cur/', 'new/', 'tmp/']:
-            checkMailSize(maildir + subdir, options.quiet, options.fix)
+        checkMailSize(maildir, options.quiet, options.fix)
 
 def checkArgs():
     parser = OptionParser(usage='%prog [options] path_to_maildir')
@@ -69,27 +63,29 @@ def checkMaildirFolders(dirpath, quiet=False, fix=False):
             '/maildirfolder')):
             checkMaildirFolders(subdir + '/', quiet, fix)
 
-    for subdir in ['cur/', 'new/', 'tmp/']:
-        checkMailSize(dirpath + subdir, quiet, fix)
+    checkMailSize(dirpath, quiet, fix)
 
 
 def checkMailSize(dirpath, quiet=False, fix=False):
+
     mailRegex = re.compile('[0-9]{10}\.M.*,S=[0-9]+:2,S?')
-    for mail in os.listdir(dirpath):
-        if mailRegex.match(mail):
-            reported_size = re.search('[0-9]+',
-                    re.search('S=[0-9]+', mail).group()
-                    ).group()
-            actual_size = os.stat(dirpath + mail).st_size
-            
-            if not int(reported_size) == actual_size:
-                if not quiet:
-                    print ('mv ' + dirpath + mail + ' ' + dirpath +
-                        mail.replace("S=" + reported_size, "S=" +
-                            str(actual_size)))
-                if fix:
-                    shutil.move(dirpath + mail, dirpath +
-                        mail.replace("S=" + reported_size, "S=" +
-                            str(actual_size)))
+
+    for subdir in [dirpath + x for x in ['cur/', 'new/', 'tmp/']]:
+        for mail in os.listdir(subdir):
+            if mailRegex.match(mail):
+                reported_size = re.search('[0-9]+',
+                        re.search('S=[0-9]+', mail).group()
+                        ).group()
+                actual_size = os.stat(subdir + mail).st_size
+
+                if not int(reported_size) == actual_size:
+                    if not quiet:
+                        print ('mv ' + subdir + mail + ' ' + subdir +
+                            mail.replace("S=" + reported_size, "S=" +
+                                str(actual_size)))
+                    if fix:
+                        shutil.move(subdir + mail, subdir +
+                            mail.replace("S=" + reported_size, "S=" +
+                                str(actual_size)))
 
 main()
