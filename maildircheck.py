@@ -97,4 +97,5 @@ def checkMailSize(dirpath, quiet=False, fix=False):
                             sys.stdout.write(line.replace(uidLineOld,
                                 uidLineNew))
 
-main()
+if __name__ == "__main__":
+    main()
