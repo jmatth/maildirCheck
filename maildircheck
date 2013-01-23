@@ -4,11 +4,12 @@ import sys
 import glob
 import re
 import shutil
-import glob
 import fileinput
 from optparse import OptionParser
 
+
 def main():
+    """ Best wrapper function """
     (options, maildir) = checkArgs()
 
     if options.recursive:
@@ -17,18 +18,21 @@ def main():
     else:
         checkMailSize(maildir, options.quiet, options.fix)
 
+
 def checkArgs():
+    """ Check the command line options with optparse """
     parser = OptionParser(usage='%prog [options] path_to_maildir')
 
     parser.add_option('-f', '--fix', dest='fix', default=False,
-        action='store_true', help='Execute the calculated mv commands')
+                      action='store_true', help='Execute the calculated mv'
+                      ' commands and fix the uid file.')
 
     parser.add_option('-q', '--quiet', dest='quiet', default=False,
-        action='store_true', help='Don\'t display any output.')
+                      action='store_true', help='Don\'t display any output.')
 
     parser.add_option('-r', '--recursive', dest='recursive', default=False,
-        action='store_true', help='Recursively process all extra folders in' +
-            'the given maildir.')
+                      action='store_true', help='Recursively process all extra'
+                      ' folders in the given maildir.')
 
     (options, args) = parser.parse_args()
 
@@ -42,8 +46,8 @@ def checkArgs():
 
     # Technically not wrong, but a stupid combination of options
     if options.quiet and not options.fix:
-        parser.error('Specifying -q without -f effectively does noting '+
-                'so I\'ll just exit here')
+        parser.error('Specifying -q without -f effectively does noting so' +
+                     ' I\'ll just exit here')
 
     # Grab the maildir path
     maildir = args[0]
@@ -54,13 +58,14 @@ def checkArgs():
 
     return (options, maildir)
 
+
 def checkMaildirFolders(dirpath, quiet=False, fix=False):
 
     subdirs = glob.glob(dirpath + '.*')
 
     for subdir in subdirs:
-        if (os.path.isdir(subdir) and os.path.isfile(subdir +
-            '/maildirfolder')):
+        if (os.path.isdir(subdir) and
+                os.path.isfile(subdir + '/maildirfolder')):
             checkMaildirFolders(subdir + '/', quiet, fix)
 
     checkMailSize(dirpath, quiet, fix)
@@ -74,28 +79,28 @@ def checkMailSize(dirpath, quiet=False, fix=False):
         for mail in os.listdir(subdir):
             if mailRegex.match(mail):
                 reported_size = re.search('[0-9]+',
-                        re.search('S=[0-9]+', mail).group()
-                        ).group()
+                                          re.search('S=[0-9]+', mail).group()
+                                          ).group()
                 actual_size = str(os.stat(subdir + mail).st_size)
 
                 if not reported_size == actual_size:
                     if not quiet:
                         print ('mv ' + subdir + mail + ' ' + subdir +
-                            mail.replace("S=" + reported_size, "S=" +
-                                actual_size))
+                               mail.replace("S=" + reported_size, "S=" +
+                               actual_size))
                     if fix:
                         uidLineOld = mail.rsplit(':', 1)[0]
                         uidLineNew = uidLineOld.replace("S=" + reported_size,
-                                "S=" + actual_size)
+                                                        "S=" + actual_size)
 
                         shutil.move(subdir + mail, subdir +
-                            mail.replace("S=" + reported_size, "S=" +
-                                actual_size))
+                                    mail.replace("S=" + reported_size,
+                                                 "S=" + actual_size))
 
-                        for line in fileinput.input(dirpath +
-                                'dovecot-uidlist', inplace=1):
+                        for line in fileinput.input(
+                                dirpath + 'dovecot-uidlist', inplace=1):
                             sys.stdout.write(line.replace(uidLineOld,
-                                uidLineNew))
+                                                          uidLineNew))
 
 if __name__ == "__main__":
     main()
