@@ -73,7 +73,9 @@ def checkMaildirFolders(dirpath, quiet=False, fix=False):
 
 def checkMailSize(dirpath, quiet=False, fix=False):
 
-    mailRegex = re.compile('[0-9]{10}\.M.*,S=[0-9]+:2,S?')
+    # Per Richton's testing of live Maildirs,
+    # we have to be pretty loose versus the spec.
+    mailRegex = re.compile('[0-9]{10}\..*S=[0-9]+')
 
     for subdir in [dirpath + x for x in ['cur/', 'new/', 'tmp/']]:
         for mail in os.listdir(subdir):
