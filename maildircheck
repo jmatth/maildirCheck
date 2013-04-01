@@ -60,49 +60,75 @@ def checkArgs():
 
 
 def checkMaildirFolders(dirpath, quiet=False, fix=False):
+    """ Recursively check nested maildirs. """
 
+    # Nested folders should be prefixed with a dot.
     subdirs = glob.glob(dirpath + '.*')
 
     for subdir in subdirs:
+        # Sanity checks. Make sure we are working with an actual directory and
+        # it has the appropriate maildir stuff in it.
         if (os.path.isdir(subdir) and
                 os.path.isfile(subdir + '/maildirfolder')):
+            # Recursive call.
             checkMaildirFolders(subdir + '/', quiet, fix)
 
+    # Check the current maildir after recursing.
     checkMailSize(dirpath, quiet, fix)
 
 
 def checkMailSize(dirpath, quiet=False, fix=False):
+    """ Checks the integrity of cur/, new/, and tmp/ in the maildir 'dirpath' """
 
     # Per Richton's testing of live Maildirs,
     # we have to be pretty loose versus the spec.
     mailRegex = re.compile('[0-9]{10}\..*S=[0-9]+')
 
     for subdir in [dirpath + x for x in ['cur/', 'new/', 'tmp/']]:
+        # List files in directory.
         for mail in os.listdir(subdir):
+            # Verify the current file matches the maildir spec.
             if mailRegex.match(mail):
+                # Grab the size from the filename.
                 reported_size = re.search('[0-9]+',
                                           re.search('S=[0-9]+', mail).group()
                                           ).group()
+                # Stat the file to get the actual size.
                 actual_size = str(os.stat(subdir + mail).st_size)
 
+                # Does the file name have the correct size?
                 if not reported_size == actual_size:
+                    # Print the mv command needed to fix the filename
                     if not quiet:
                         print ('mv ' + subdir + mail + ' ' + subdir +
                                mail.replace("S=" + reported_size, "S=" +
                                actual_size))
+                    # Fix the filename if we were asked to.
                     if fix:
+                        # Used to fix the uidlist file.
                         uidLineOld = mail.rsplit(':', 1)[0]
                         uidLineNew = uidLineOld.replace("S=" + reported_size,
                                                         "S=" + actual_size)
 
+                        # Move the file to fixed location.
                         shutil.move(subdir + mail, subdir +
                                     mail.replace("S=" + reported_size,
                                                  "S=" + actual_size))
 
+                        # Rewrite the uidlist file, replacing the line for the
+                        # file we just moved with the updated one.
+                        # FIXME: is there a way to change just the one line
+                        # without rewriting the whole file? Google seems to
+                        # think not.
                         for line in fileinput.input(
                                 dirpath + 'dovecot-uidlist', inplace=1):
+                            # fileinput redirects stdout to the file, so this
+                            # is actually writing each line. line.replace
+                            # replaces the old line when it's found, otherwise
+                            # just returns the original.
                             sys.stdout.write(line.replace(uidLineOld,
                                                           uidLineNew))
 
+# The python way to start main.
 if __name__ == "__main__":
     main()
